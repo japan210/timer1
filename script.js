@@ -221,6 +221,18 @@ document.addEventListener("DOMContentLoaded", () => {
         t.elements.display.style.color = t.color;
         
         playAlarmSound();
+
+        // バイブレーション (主にAndroid用)
+        if ("vibrate" in navigator) {
+            navigator.vibrate([500, 200, 500, 200, 500]);
+        }
+
+        // OS通知 (バナー通知、スマートウォッチ等の連携含む)
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(`タイマー終了: ${t.name}`, {
+                body: "時間がゼロになりました！",
+            });
+        }
     }
 
     function tick() {
@@ -253,6 +265,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function startTimer() {
         initAudio();
+
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
         
         const noRemaining = timers.every(t => t.remainingSec === 0);
         if (noRemaining || timers.length === 0) return;
