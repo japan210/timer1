@@ -104,13 +104,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 status: document.getElementById(`status-${id}`),
                 btnDelete: card.querySelector(".btn-delete")
             },
-            circumference
+            circumference,
+            endTime: 0
         };
 
         timers.push(timerObj);
         updateTimerDisplay(timerObj);
         
         if (isRunning) {
+            timerObj.endTime = Date.now() + timerObj.remainingSec * 1000;
             timerObj.elements.status.textContent = "Running";
         } else if (isPaused) {
             timerObj.elements.status.textContent = "Paused";
@@ -223,10 +225,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function tick() {
         let allFinished = true;
+        const now = Date.now();
 
         timers.forEach(t => {
-            if (t.remainingSec > 0) {
-                t.remainingSec--;
+            if (t.remainingSec > 0 && !t.finished) {
+                let msLeft = t.endTime - now;
+                t.remainingSec = Math.max(0, Math.ceil(msLeft / 1000));
                 
                 if (t.remainingSec === 0 && !t.finished) {
                     t.finished = true;
@@ -256,11 +260,17 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isRunning) {
             isRunning = true;
             isPaused = false;
-            timerInterval = setInterval(tick, 1000);
             
+            const now = Date.now();
             timers.forEach(t => {
-                if (t.remainingSec > 0) t.elements.status.textContent = "Running";
+                if (t.remainingSec > 0 && !t.finished) {
+                    t.endTime = now + t.remainingSec * 1000;
+                    t.elements.status.textContent = "Running";
+                }
             });
+
+            timerInterval = setInterval(tick, 500); // More frequent updates for smoothness
+            
             updateGlobalButtons();
         }
     }
@@ -271,8 +281,13 @@ document.addEventListener("DOMContentLoaded", () => {
             isRunning = false;
             isPaused = true;
             
+            const now = Date.now();
             timers.forEach(t => {
-                if (t.remainingSec > 0) t.elements.status.textContent = "Paused";
+                if (t.remainingSec > 0 && !t.finished) {
+                    let msLeft = t.endTime - now;
+                    t.remainingSec = Math.max(0, Math.ceil(msLeft / 1000));
+                    t.elements.status.textContent = "Paused";
+                }
             });
             updateGlobalButtons();
         }
