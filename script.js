@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const timersContainer = document.getElementById("timers-container");
     const setupSection = document.getElementById("setup-section");
     const inputName = document.getElementById("timer-name");
-    const inputMins = document.getElementById("timer-mins");
+    const inputDays = document.getElementById("timer-days");
+    const inputHours = document.getElementById("timer-hours");
+    const inputMins = document.getElementById("timer-mins");    
     const inputSecs = document.getElementById("timer-secs");
     const btnAdd = document.getElementById("btn-add");
 
@@ -27,10 +29,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add Timer Event
     btnAdd.addEventListener("click", () => {
         let name = inputName.value.trim() || `タイマー ${nextId}`;
+        let d = parseInt(inputDays ? inputDays.value : 0) || 0;
+        let h = parseInt(inputHours ? inputHours.value : 0) || 0;
         let m = parseInt(inputMins.value) || 0;
         let s = parseInt(inputSecs.value) || 0;
 
-        let totalSecs = m * 60 + s;
+        let totalSecs = (d * 86400) + (h * 3600) + (m * 60) + s;
         if (totalSecs <= 0) {
             alert("1秒以上の時間を設定してください。");
             return;
@@ -39,6 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
         addTimer(name, totalSecs);
         
         inputName.value = "";
+        if (inputDays) inputDays.value = "";
+        if (inputHours) inputHours.value = "";
         inputMins.value = "";
         inputSecs.value = "";
     });
@@ -127,7 +133,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateTimerDisplay(t) {
-        t.elements.display.textContent = formatTime(t.remainingSec);
+        const timeStr = formatTime(t.remainingSec);
+        t.elements.display.textContent = timeStr;
+        
+        // フォントサイズを文字数に合わせて動的に調整
+        if (timeStr.length > 8) {
+            t.elements.display.style.fontSize = "1.5rem";
+        } else if (timeStr.length > 5) {
+            t.elements.display.style.fontSize = "2.0rem";
+        } else {
+            t.elements.display.style.fontSize = "2.5rem";
+        }
         
         let percent = t.remainingSec > 0 ? ((t.durationSec - t.remainingSec) / t.durationSec) * 100 : 100;
         const offset = t.circumference - (percent / 100) * t.circumference;
@@ -171,6 +187,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function formatTime(seconds) {
         if (seconds <= 0) return "00:00";
+        if(seconds >= 86400) {
+            const d = Math.floor(seconds / 86400);
+            const h = Math.floor((seconds % 86400) / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${d}日 ${h}:${m}:${s}`;
+        }
         if(seconds >= 3600) {
             const h = Math.floor(seconds / 3600);
             const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
