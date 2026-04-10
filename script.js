@@ -3,11 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let isRunning = false;
     let isPaused = false;
     let alarmAudio = new Audio('alarm.mp3');
-
-    // バックグラウンド維持用の無音ファイル
-    const silentWAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-    const keepAliveAudio = new Audio(silentWAV);
-    keepAliveAudio.loop = true;
+    alarmAudio.loop = true;
+    let ringTimeout = null;
 
     let timers = [];
     let nextId = 1;
@@ -196,13 +193,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function initAudio() {
-        alarmAudio.play().then(() => {
-            alarmAudio.pause();
-            alarmAudio.currentTime = 0;
-        }).catch(() => {});
+        // iPhoneのロック画面対策: バックグラウンドで常に「無音」で再生し続ける
+        alarmAudio.muted = true;
+        alarmAudio.play().catch(e => console.log("Audio unlock failed", e));
         
-        keepAliveAudio.play().catch(() => {});
-
         if ('mediaSession' in navigator) {
             navigator.mediaSession.setActionHandler('pause', pauseTimer);
             navigator.mediaSession.setActionHandler('play', startTimer);
@@ -210,8 +204,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function playAlarmSound() {
+        // ロック画面でも鳴らせる最大の裏技: すでに流れている無音のミュートを解除する
         alarmAudio.currentTime = 0;
-        alarmAudio.play().catch(e => console.log("Audio play blocked", e));
+        alarmAudio.muted = false;
+
+        // 約15秒鳴らしたら、他のタイマーのために再びミュートに戻すか停止する
+        if (ringTimeout) clearTimeout(ringTimeout);
+        ringTimeout = setTimeout(() => {
+            const noRemaining = timers.every(t => t.remainingSec === 0);
+            if (!noRemaining) {
+                alarmAudio.muted = true;
+            } else {
+                alarmAudio.pause();
+                alarmAudio.currentTime = 0;
+            }
+        }, 15000);
     }
 
     function handleFinish(t) {
@@ -280,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (noRemaining && timers.length > 0) {
             clearInterval(timerInterval);
             isRunning = false;
-            keepAliveAudio.pause();
+            // 最後のタイマーの音は playAlarmSound() 内の setTimeout で停止させるためここでは止めない
             btnStart.disabled = true;
             btnPause.disabled = true;
             btnStart.textContent = "DONE";
@@ -329,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     t.elements.status.textContent = "Paused";
                 }
             });
-            keepAliveAudio.pause();
+            alarmAudio.pause();
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `⏸ 一時停止中`,
@@ -354,7 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateTimerDisplay(t);
         });
         
-        keepAliveAudio.pause();
+        alarmAudio.pause();
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: `⏹ 待機中`,
