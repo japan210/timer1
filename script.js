@@ -2,9 +2,30 @@ document.addEventListener("DOMContentLoaded", () => {
     let timerInterval = null;
     let isRunning = false;
     let isPaused = false;
-    let alarmAudio = new Audio('alarm.mp3');
-    alarmAudio.loop = true;
+    let audioCtx = null;
+    let alarmBuffer = null;
+    let alarmSource = null;
     let ringTimeout = null;
+
+    // バックグラウンド維持用の無音ファイル（これが絶対に必要です）
+    const silentWAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    const keepAliveAudio = new Audio(silentWAV);
+    keepAliveAudio.loop = true;
+
+    async function loadAlarmAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (!alarmBuffer) {
+            try {
+                const response = await fetch('alarm.mp3');
+                const arrayBuffer = await response.arrayBuffer();
+                alarmBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            } catch (err) {
+                console.error("MP3の読み込みに失敗しました:", err);
+            }
+        }
+    }
 
     let timers = [];
     let nextId = 1;
@@ -193,9 +214,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function initAudio() {
-        // iPhoneのロック画面対策: バックグラウンドで常に「無音」で再生し続ける
-        alarmAudio.muted = true;
-        alarmAudio.play().catch(e => console.log("Audio unlock failed", e));
+        loadAlarmAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        
+        // 【最重要】音量アリの無音ファイルを流すことでiPhoneを完全に騙し、スリープを防ぐ！
+        keepAliveAudio.play().catch(e => console.log("Keep alive blocked", e));
         
         if ('mediaSession' in navigator) {
             navigator.mediaSession.setActionHandler('pause', pauseTimer);
@@ -204,19 +229,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function playAlarmSound() {
-        // ロック画面でも鳴らせる最大の裏技: すでに流れている無音のミュートを解除する
-        alarmAudio.currentTime = 0;
-        alarmAudio.muted = false;
+        if (!audioCtx || !alarmBuffer) return;
+        
+        if (alarmSource) {
+            try { alarmSource.stop(); } catch(e) {}
+        }
+        
+        // すでに無音再生でOSがアクティブになっているため、Web Audio APIからの追加サウンドはロック画面でも鳴動可能！
+        alarmSource = audioCtx.createBufferSource();
+        alarmSource.buffer = alarmBuffer;
+        alarmSource.connect(audioCtx.destination);
+        alarmSource.loop = true;
+        alarmSource.start(0);
 
-        // 約15秒鳴らしたら、他のタイマーのために再びミュートに戻すか停止する
         if (ringTimeout) clearTimeout(ringTimeout);
         ringTimeout = setTimeout(() => {
+            if (alarmSource) {
+                try { alarmSource.stop(); } catch(e) {}
+            }
             const noRemaining = timers.every(t => t.remainingSec === 0);
-            if (!noRemaining) {
-                alarmAudio.muted = true;
-            } else {
-                alarmAudio.pause();
-                alarmAudio.currentTime = 0;
+            if (noRemaining) {
+                keepAliveAudio.pause(); // 全てのタイマーが完了したら維持も止める
             }
         }, 15000);
     }
@@ -336,7 +369,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     t.elements.status.textContent = "Paused";
                 }
             });
-            alarmAudio.pause();
+            keepAliveAudio.pause();
+            if (alarmSource) {
+                try { alarmSource.stop(); } catch(e){}
+            }
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `⏸ 一時停止中`,
@@ -361,7 +397,10 @@ document.addEventListener("DOMContentLoaded", () => {
             updateTimerDisplay(t);
         });
         
-        alarmAudio.pause();
+        keepAliveAudio.pause();
+        if (alarmSource) {
+            try { alarmSource.stop(); } catch(e){}
+        }
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: `⏹ 待機中`,
