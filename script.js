@@ -4,6 +4,11 @@ document.addEventListener("DOMContentLoaded", () => {
     let isPaused = false;
     let alarmAudio = new Audio('alarm.mp3');
 
+    // バックグラウンド維持用の無音ファイル
+    const silentWAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    const keepAliveAudio = new Audio(silentWAV);
+    keepAliveAudio.loop = true;
+
     let timers = [];
     let nextId = 1;
     const colors = ["#00f2fe", "#fe0979", "#00ff87", "#f8ff00", "#9b00e8", "#ff007f", "#ff8c00"];
@@ -182,6 +187,13 @@ document.addEventListener("DOMContentLoaded", () => {
             alarmAudio.pause();
             alarmAudio.currentTime = 0;
         }).catch(() => {});
+        
+        keepAliveAudio.play().catch(() => {});
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('pause', pauseTimer);
+            navigator.mediaSession.setActionHandler('play', startTimer);
+        }
     }
 
     function playAlarmSound() {
@@ -215,6 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function tick() {
         let allFinished = true;
         const now = Date.now();
+        let minTimeArray = [];
 
         timers.forEach(t => {
             if (t.remainingSec > 0 && !t.finished) {
@@ -226,14 +239,35 @@ document.addEventListener("DOMContentLoaded", () => {
                     handleFinish(t);
                 }
                 updateTimerDisplay(t);
+
+                if (!t.finished) {
+                    minTimeArray.push(t.remainingSec);
+                }
             }
             if (!t.finished) allFinished = false;
         });
+
+        // ロック画面の音楽プレイヤー（Media Session API）に残り時間を表示
+        if ('mediaSession' in navigator) {
+            if (minTimeArray.length > 0) {
+                let minTime = Math.min(...minTimeArray);
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `最短残り時間 ⏱ ${formatTime(minTime)}`,
+                    artist: 'Multi Timer（バックグラウンド動作中）',
+                });
+            } else {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `タイマー完了！`,
+                    artist: 'Multi Timer',
+                });
+            }
+        }
 
         const noRemaining = timers.every(t => t.remainingSec === 0);
         if (noRemaining && timers.length > 0) {
             clearInterval(timerInterval);
             isRunning = false;
+            keepAliveAudio.pause();
             btnStart.disabled = true;
             btnPause.disabled = true;
             btnStart.textContent = "DONE";
@@ -282,6 +316,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     t.elements.status.textContent = "Paused";
                 }
             });
+            keepAliveAudio.pause();
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `⏸ 一時停止中`,
+                    artist: 'Multi Timer',
+                });
+            }
             updateGlobalButtons();
         }
     }
@@ -299,6 +340,14 @@ document.addEventListener("DOMContentLoaded", () => {
             t.elements.status.textContent = "Ready";
             updateTimerDisplay(t);
         });
+        
+        keepAliveAudio.pause();
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: `⏹ 待機中`,
+                artist: 'Multi Timer',
+            });
+        }
         
         updateGlobalButtons();
     }
