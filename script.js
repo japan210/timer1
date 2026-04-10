@@ -189,27 +189,34 @@ document.addEventListener("DOMContentLoaded", () => {
     function playAlarmSound() {
         initAudio();
         let startTime = audioContext.currentTime;
-        for (let i = 0; i < 4; i++) {
-            playBeep(startTime + i * 0.45);
+        // ゆったりとした優しい「ピン・ポーン」というメロディを3回繰り返す
+        for (let i = 0; i < 3; i++) {
+            playMelody(startTime + i * 3.5);
         }
     }
 
-    function playBeep(time) {
+    function playMelody(time) {
+        playSoftTone(time, 880, 1.2);          // ピン (A5)
+        playSoftTone(time + 0.6, 659.25, 2.5); // ポーン (E5) ゆっくり長く響く
+    }
+
+    function playSoftTone(time, freq, duration) {
         const osc = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
         
         osc.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(880, time);
+        osc.type = 'sine'; // 非常に丸みがあり柔らかいサイン波
+        osc.frequency.setValueAtTime(freq, time);
         
         gainNode.gain.setValueAtTime(0, time);
-        gainNode.gain.linearRampToValueAtTime(0.8, time + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
+        // ふんわり立ち上がり、ゆっくりと消えていく
+        gainNode.gain.linearRampToValueAtTime(0.5, time + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration - 0.1);
         
         osc.start(time);
-        osc.stop(time + 0.4);
+        osc.stop(time + duration);
     }
 
     function handleFinish(t) {
