@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Multi Timer | カスタムタイマー</title>
+    <meta name="description" content="A dynamic concurrent timer app supporting multiple beautifully designed countdowns.">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>Multi Timers</h1>
+            <p>同時に実行する複数のタイマーを自由にカスタマイズ</p>
+        </header>
+
+        <div class="setup-section" id="setup-section">
+            <div class="add-timer-box">
+                <input type="text" id="timer-name" placeholder="名称 (例: プレゼン)" class="form-input" maxlength="20">
+                <input type="number" id="timer-mins" placeholder="分" min="0" class="form-input number-input">
+                <span class="colon">:</span>
+                <input type="number" id="timer-secs" placeholder="秒" min="0" max="59" class="form-input number-input">
+                <button id="btn-add" class="btn outline small">＋ 追加</button>
+            </div>
+        </div>
+
+        <div class="timers" id="timers-container">
+            <!-- Dynamic cards generated here -->
+        </div>
+
+        <div class="controls">
+            <button id="btn-start" class="btn primary">START ALL</button>
+            <button id="btn-pause" class="btn secondary" disabled>PAUSE ALL</button>
+            <button id="btn-reset" class="btn outline" disabled>RESET ALL</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
