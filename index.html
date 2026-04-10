@@ -23,13 +23,11 @@
         <div class="setup-section" id="setup-section">
             <div class="add-timer-box">
                 <input type="text" id="timer-name" placeholder="名称 (例: プレゼン)" class="form-input" maxlength="20">
-                <input type="number" id="timer-days" placeholder="日" min="0" class="form-input number-input">
-                <span class="colon">:</span>
-                <input type="number" id="timer-hours" placeholder="時" min="0" class="form-input number-input">
-                <span class="colon">:</span>
-                <input type="number" id="timer-mins" placeholder="分" min="0" max="59" class="form-input number-input">
-                <span class="colon">:</span>
-                <input type="number" id="timer-secs" placeholder="秒" min="0" max="59" class="form-input number-input">
+                <div class="time-inputs">
+                    <input type="number" id="timer-hours" placeholder="0" min="0" class="form-input number-input"><span class="unit">時間</span>
+                    <input type="number" id="timer-mins" placeholder="10" min="0" max="59" class="form-input number-input"><span class="unit">分</span>
+                    <input type="number" id="timer-secs" placeholder="0" min="0" max="59" class="form-input number-input"><span class="unit">秒</span>
+                </div>
                 <button id="btn-add" class="btn outline small">＋ 追加</button>
             </div>
         </div>

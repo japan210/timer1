@@ -137,10 +137,17 @@ header p {
     text-align: center;
 }
 
-.colon {
-    font-weight: bold;
-    font-size: 1.2rem;
-    color: #a0a5b1;
+.time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.unit {
+    margin-right: 12px;
+    font-size: 1rem;
+    color: #d1d5db;
+    font-weight: 600;
 }
 
 /* TIMERS */
