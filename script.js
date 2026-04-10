@@ -2,30 +2,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let timerInterval = null;
     let isRunning = false;
     let isPaused = false;
-    let audioCtx = null;
-    let alarmBuffer = null;
-    let alarmSource = null;
-    let ringTimeout = null;
+    let alarmAudio = new Audio('alarm.mp3');
 
-    // バックグラウンド維持用の無音ファイル（これが絶対に必要です）
+    // バックグラウンド維持用の無音ファイル
     const silentWAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
     const keepAliveAudio = new Audio(silentWAV);
     keepAliveAudio.loop = true;
-
-    async function loadAlarmAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (!alarmBuffer) {
-            try {
-                const response = await fetch('alarm.mp3');
-                const arrayBuffer = await response.arrayBuffer();
-                alarmBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-            } catch (err) {
-                console.error("MP3の読み込みに失敗しました:", err);
-            }
-        }
-    }
 
     let timers = [];
     let nextId = 1;
@@ -214,14 +196,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function initAudio() {
-        loadAlarmAudio();
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        alarmAudio.play().then(() => {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+        }).catch(() => {});
         
-        // 【最重要】音量アリの無音ファイルを流すことでiPhoneを完全に騙し、スリープを防ぐ！
         keepAliveAudio.play().catch(e => console.log("Keep alive blocked", e));
-        
+
         if ('mediaSession' in navigator) {
             navigator.mediaSession.setActionHandler('pause', pauseTimer);
             navigator.mediaSession.setActionHandler('play', startTimer);
@@ -229,29 +210,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function playAlarmSound() {
-        if (!audioCtx || !alarmBuffer) return;
-        
-        if (alarmSource) {
-            try { alarmSource.stop(); } catch(e) {}
-        }
-        
-        // すでに無音再生でOSがアクティブになっているため、Web Audio APIからの追加サウンドはロック画面でも鳴動可能！
-        alarmSource = audioCtx.createBufferSource();
-        alarmSource.buffer = alarmBuffer;
-        alarmSource.connect(audioCtx.destination);
-        alarmSource.loop = true;
-        alarmSource.start(0);
-
-        if (ringTimeout) clearTimeout(ringTimeout);
-        ringTimeout = setTimeout(() => {
-            if (alarmSource) {
-                try { alarmSource.stop(); } catch(e) {}
-            }
-            const noRemaining = timers.every(t => t.remainingSec === 0);
-            if (noRemaining) {
-                keepAliveAudio.pause(); // 全てのタイマーが完了したら維持も止める
-            }
-        }, 15000);
+        alarmAudio.currentTime = 0;
+        alarmAudio.play().catch(e => console.log("Audio play blocked", e));
     }
 
     function handleFinish(t) {
@@ -320,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (noRemaining && timers.length > 0) {
             clearInterval(timerInterval);
             isRunning = false;
-            // 最後のタイマーの音は playAlarmSound() 内の setTimeout で停止させるためここでは止めない
+            keepAliveAudio.pause();
             btnStart.disabled = true;
             btnPause.disabled = true;
             btnStart.textContent = "DONE";
@@ -370,9 +330,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
             keepAliveAudio.pause();
-            if (alarmSource) {
-                try { alarmSource.stop(); } catch(e){}
-            }
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `⏸ 一時停止中`,
@@ -398,9 +355,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         
         keepAliveAudio.pause();
-        if (alarmSource) {
-            try { alarmSource.stop(); } catch(e){}
-        }
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: `⏹ 待機中`,
